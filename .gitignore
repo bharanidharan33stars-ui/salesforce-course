@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+backend/node_modules/
+
+# Next.js build output
+.next/
+out/
+next-env.d.ts
+
+# Build / coverage
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Environment files (never commit real secrets)
+.env
+.env.local
+.env.*.local
+backend/.env
+backend/.env.local
+
+# Runtime data that should stay on the machine
+backend/storage/
+backend/logs/
+*.log
+
+# Vercel local state
+.vercel/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/*
+!.vscode/extensions.json
+
+# Test artifacts
+backend/vitest-report/
+playwright-report/
+test-results/
