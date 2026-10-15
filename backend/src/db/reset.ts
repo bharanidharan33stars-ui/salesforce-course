@@ -30,6 +30,14 @@ export async function resetDatabase(assumeYes = false): Promise<void> {
     port: env.DATABASE_PORT,
     user: env.DATABASE_USER,
     password: env.DATABASE_PASSWORD,
+    ...(env.DATABASE_SSL
+      ? {
+          ssl: {
+            rejectUnauthorized: env.DATABASE_SSL_REJECT,
+            ...(env.DATABASE_CA ? { ca: env.DATABASE_CA } : {}),
+          },
+        }
+      : {}),
     multipleStatements: true,
   });
 

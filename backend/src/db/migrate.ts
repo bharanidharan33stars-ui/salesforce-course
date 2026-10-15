@@ -23,6 +23,15 @@ async function ensureDatabase(): Promise<mysql.Connection> {
     user: env.DATABASE_USER,
     password: env.DATABASE_PASSWORD,
     multipleStatements: true,
+    // TLS for hosted MySQL (TiDB Serverless requires it) - same flags as the pool.
+    ...(env.DATABASE_SSL
+      ? {
+          ssl: {
+            rejectUnauthorized: env.DATABASE_SSL_REJECT,
+            ...(env.DATABASE_CA ? { ca: env.DATABASE_CA } : {}),
+          },
+        }
+      : {}),
   });
 
   await connection.query(

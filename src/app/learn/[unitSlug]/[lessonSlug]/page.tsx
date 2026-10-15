@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { api, errorMessage } from "@/lib/api-client";
 import { Markdown } from "@/lib/markdown";
-import { Alert, Badge, Card, PageLoader } from "@/components/ui/primitives";
+import { Alert, Badge, Card, PageLoader, ProgressBar } from "@/components/ui/primitives";
 import { Button, LinkButton } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -44,6 +44,8 @@ export default function LessonPage() {
   const [justCompleted, setJustCompleted] = useState(false);
   const [certificateUnlocked, setCertificateUnlocked] = useState(false);
   const startedLessonIdRef = useRef<number | null>(null);
+  const activeChipRef = useRef<HTMLAnchorElement | null>(null);
+  const activeSlug = context?.lesson.slug;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -80,6 +82,15 @@ export default function LessonPage() {
       cancelled = true;
     };
   }, [load, isAuthenticated]);
+
+  // Keep the active lesson chip visible inside the mobile scroll strip.
+  useEffect(() => {
+    activeChipRef.current?.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "nearest",
+      inline: "center",
+    });
+  }, [activeSlug, reduceMotion]);
 
   const markComplete = async () => {
     if (!context) return;
@@ -142,35 +153,91 @@ export default function LessonPage() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[16rem_1fr]">
-      {/* Lesson sidebar - collapses into a horizontal list on mobile */}
+      {/* Lesson navigator - horizontal touch strip on mobile, sticky list on desktop */}
       <aside className="lg:sticky lg:top-24 lg:self-start">
         <Card className="p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">In this unit</p>
-          <p className="mt-1 text-sm font-bold text-navy">{unit.title}</p>
-          <ul className="mt-3 flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
-            {unitLessons.map((item, index) => {
-              const active = item.slug === lesson.slug;
-              return (
-                <li key={item.id} className="shrink-0 lg:shrink">
-                  <Link
-                    href={`/learn/${unit.slug}/${item.slug}`}
-                    className={cn(
-                      "flex min-h-10 items-center gap-2 rounded-lg px-2.5 text-sm transition-colors",
-                      active ? "bg-brand-soft font-semibold text-brand" : "text-ink hover:bg-bg",
-                    )}
-                  >
-                    {item.status === "completed" ? (
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
-                    ) : (
-                      <span className="w-4 shrink-0 text-center text-xs text-muted">{index + 1}</span>
-                    )}
-                    <span className="max-w-[14rem] truncate lg:max-w-none">{item.title}</span>
-                    {!item.isRequired ? <span className="text-[10px] text-muted">(optional)</span> : null}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-brand">In this unit</p>
+              <p className="mt-1 truncate text-sm font-bold text-navy">{unit.title}</p>
+            </div>
+            <span className="shrink-0 rounded-full bg-brand-soft px-2.5 py-1 text-xs font-bold text-brand tabular-nums">
+              {unitLessons.filter((l) => l.status === "completed").length}/{unitLessons.length}
+            </span>
+          </div>
+
+          <ProgressBar
+            className="mt-3"
+            value={unitLessons.filter((l) => l.status === "completed").length}
+            max={unitLessons.length}
+            label="Lessons"
+            showValue={false}
+          />
+
+          <div className="relative mt-3">
+            <ul className="scroll-strip -mx-1 flex gap-2 px-1 pb-1 lg:mx-0 lg:flex-col lg:overflow-x-visible lg:px-0 lg:pb-0">
+              {unitLessons.map((item, index) => {
+                const active = item.slug === lesson.slug;
+                const completed = item.status === "completed";
+                return (
+                  <li key={item.id} className="shrink-0 lg:shrink">
+                    <Link
+                      ref={active ? activeChipRef : undefined}
+                      href={`/learn/${unit.slug}/${item.slug}`}
+                      className={cn(
+                        "relative flex min-h-11 max-w-[13rem] items-center gap-2 rounded-full border px-3.5 text-sm transition-colors duration-200 lg:max-w-none lg:rounded-xl",
+                        active
+                          ? "border-brand font-semibold text-white shadow-md shadow-brand/30"
+                          : "border-line bg-surface text-ink hover:border-brand/40 hover:text-brand active:scale-[0.98]",
+                      )}
+                    >
+                      {active ? (
+                        <motion.span
+                          layoutId="active-lesson-pill"
+                          aria-hidden="true"
+                          className="absolute inset-0 rounded-full bg-gradient-to-r from-brand to-brand-dark lg:rounded-xl"
+                          transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                        />
+                      ) : null}
+                      <span className="relative z-10 flex min-w-0 items-center gap-2">
+                        {completed ? (
+                          <CheckCircle2
+                            className={cn("h-4 w-4 shrink-0", active ? "text-white" : "text-success")}
+                            aria-hidden="true"
+                          />
+                        ) : (
+                          <span
+                            className={cn(
+                              "w-4 shrink-0 text-center text-xs font-bold",
+                              active ? "text-white/90" : "text-muted",
+                            )}
+                          >
+                            {index + 1}
+                          </span>
+                        )}
+                        <span className="truncate">{item.title}</span>
+                        {!item.isRequired ? (
+                          <span
+                            className={cn(
+                              "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                              active ? "bg-white/20 text-white" : "bg-bg text-muted",
+                            )}
+                          >
+                            opt
+                          </span>
+                        ) : null}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+            {/* Right-edge fade: hints that the strip scrolls sideways on mobile. */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white via-white/80 to-transparent lg:hidden"
+            />
+          </div>
         </Card>
       </aside>
 
@@ -208,8 +275,30 @@ export default function LessonPage() {
             ) : null}
           </div>
 
-          <h1 className="text-2xl font-bold text-navy sm:text-3xl">{lesson.title}</h1>
-          {lesson.summary ? <p className="mt-2 text-base leading-relaxed text-muted">{lesson.summary}</p> : null}
+          {/* Colourful lesson banner */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand via-brand to-brand-dark p-5 text-white shadow-lg shadow-brand/25 sm:p-7">
+            <div
+              aria-hidden="true"
+              className="animate-float pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/10"
+            />
+            <div
+              aria-hidden="true"
+              className="animate-float pointer-events-none absolute -bottom-16 -left-8 h-36 w-36 rounded-full bg-white/10"
+              style={{ animationDelay: "1.6s" }}
+            />
+            <p className="relative text-xs font-semibold uppercase tracking-widest text-white/75">
+              {unit.title}
+            </p>
+            <h1 className="relative mt-1.5 text-2xl font-extrabold leading-tight sm:text-4xl">
+              {lesson.title}
+            </h1>
+            {lesson.summary ? (
+              <p className="relative mt-2 max-w-2xl text-sm leading-relaxed text-white/85 sm:text-base">
+                {lesson.summary}
+              </p>
+            ) : null}
+            <div className="relative mt-4 h-1 w-20 rounded-full bg-white/40" />
+          </div>
 
           <div className="mt-6">
             <Markdown content={lesson.content} />
@@ -231,9 +320,13 @@ export default function LessonPage() {
           ) : null}
 
           {/* Completion */}
-          <div className="mt-8 border-t border-line pt-6">
+          <div className="mt-7 border-t border-line pt-5 sm:mt-8 sm:pt-6">
             {certificateUnlocked ? (
-              <Alert tone="success" title="Congratulations — you completed the course!">
+              <Alert
+                tone="success"
+                title="Congratulations — you completed the course!"
+                className="animate-pop"
+              >
                 Your certificate has been generated and queued for e-mail delivery.
                 <div className="mt-3">
                   <LinkButton href="/certificates" size="sm">View my certificates</LinkButton>
@@ -243,21 +336,31 @@ export default function LessonPage() {
 
             {isCompleted ? (
               <div className="flex flex-wrap items-center gap-3">
-                <p className="inline-flex items-center gap-2 text-sm font-semibold text-success">
-                  <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+                <motion.p
+                  initial={reduceMotion ? false : { opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 18 }}
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-success"
+                >
+                  <CheckCircle2 className="h-5 w-5 animate-pop" aria-hidden="true" />
                   Lesson completed
                   {context.completedAt ? ` on ${new Date(String(context.completedAt).replace(" ", "T")).toLocaleDateString("en-GB")}` : ""}
-                </p>
+                </motion.p>
                 <LinkButton href="/dashboard" variant="ghost" size="sm">
                   Back to dashboard
                 </LinkButton>
               </div>
             ) : requiresManualCompletion ? (
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <Button onClick={() => void markComplete()} loading={completing} size="lg">
-                  <PlayCircle className="h-4 w-4" aria-hidden="true" />
-                  {completing ? "Saving…" : "Mark lesson as complete"}
-                </Button>
+                <motion.div
+                  whileTap={reduceMotion ? undefined : { scale: 0.96 }}
+                  className="inline-flex"
+                >
+                  <Button onClick={() => void markComplete()} loading={completing} size="lg">
+                    <PlayCircle className="h-4 w-4" aria-hidden="true" />
+                    {completing ? "Saving…" : "Mark lesson as complete"}
+                  </Button>
+                </motion.div>
                 <p className="text-xs text-muted">
                   A lesson counts as complete only when you confirm it here.
                 </p>
@@ -267,34 +370,55 @@ export default function LessonPage() {
             )}
 
             {justCompleted && !certificateUnlocked ? (
-              <p className="mt-3 text-sm font-medium text-success">Progress saved. Nice work!</p>
+              <motion.p
+                initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.12 }}
+                className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-success"
+              >
+                <CheckCircle2 className="h-5 w-5 animate-pop" aria-hidden="true" />
+                Progress saved. Nice work!
+              </motion.p>
             ) : null}
           </div>
 
           {/* Prev / next */}
-          <div className="mt-8 flex flex-col gap-3 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-7 flex flex-col gap-3 border-t border-line pt-5 sm:mt-8 sm:flex-row sm:items-center sm:justify-between sm:pt-6">
             {prev ? (
-              <Link
-                href={`/learn/${prev.unitSlug}/${prev.slug}`}
-                className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-line px-4 text-sm font-semibold text-ink hover:border-brand hover:text-brand"
+              <motion.div
+                whileHover={reduceMotion ? undefined : { x: -4 }}
+                whileTap={reduceMotion ? undefined : { scale: 0.97 }}
+                className="w-full sm:inline-flex sm:w-auto"
               >
-                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-                <span className="max-w-[10rem] truncate">{prev.title}</span>
-              </Link>
+                <Link
+                  href={`/learn/${prev.unitSlug}/${prev.slug}`}
+                  className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 py-3 text-center text-sm font-semibold leading-snug text-ink transition-colors hover:border-brand hover:text-brand sm:w-auto sm:justify-start sm:py-0 sm:text-left"
+                >
+                  <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span className="min-w-0 break-words whitespace-normal">{prev.title}</span>
+                </Link>
+              </motion.div>
             ) : (
               <span />
             )}
 
             {next ? (
-              <Button
-                size="lg"
-                onClick={() => router.push(`/learn/${next.unitSlug}/${next.slug}`)}
+              <motion.div
+                whileHover={reduceMotion ? undefined : { x: 4 }}
+                whileTap={reduceMotion ? undefined : { scale: 0.97 }}
+                className="w-full sm:inline-flex sm:w-auto"
               >
-                <span className="max-w-[10rem] truncate">{next.title}</span>
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Button>
+                <Button
+                  size="lg"
+                  className="w-full sm:w-auto"
+                  onClick={() => router.push(`/learn/${next.unitSlug}/${next.slug}`)}
+                >
+                  <span className="min-w-0 break-words whitespace-normal">{next.title}</span>
+                  <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+                </Button>
+              </motion.div>
             ) : (
-              <LinkButton href={`/course/${unit.slug}`} variant="outline" size="lg">
+              <LinkButton href={`/course/${unit.slug}`} variant="outline" size="lg" className="w-full sm:w-auto">
                 Back to unit
               </LinkButton>
             )}

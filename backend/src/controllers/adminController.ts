@@ -111,7 +111,10 @@ export const getStudent = asyncHandler(async (req: Request, res: Response) => {
   if (!user) throw ApiError.notFound("Student not found.");
 
   const courseId = await progressService.getPrimaryCourseId();
-  const progress = await progressService.getDashboard(studentId).catch(() => null);
+  // The admin screen renders a ProgressSummary directly (the same object the
+  // learner dashboard nests under `progress`). getDashboard() would wrap it
+  // one level too deep ({ course, progress, ... }) and crash the page.
+  const progress = await completionService.computeProgress(studentId, courseId).catch(() => null);
 
   const attemptRows = await import("../config/db").then((m) =>
     m.query<{ id: number; quiz_id: number; score: number; passed: number; submitted_at: string | null; attempt_number: number }[]>(

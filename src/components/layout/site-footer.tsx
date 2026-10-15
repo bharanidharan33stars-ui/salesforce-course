@@ -4,8 +4,11 @@ import { ACADEMY_NAME } from "@/lib/constants";
 
 const PRODUCT_LINKS = [
   { href: "/course", label: "Course overview" },
-  { href: "/course/introduction-to-salesforce", label: "Unit 1: Introduction" },
-  { href: "/course/apex-programming-basics", label: "Unit 3: Apex basics" },
+  { href: "/course/introduction-to-salesforce", label: "Unit 1: Introduction to Salesforce" },
+  { href: "/course/salesforce-crm-functionality", label: "Unit 2: Salesforce CRM Functionality" },
+  { href: "/course/apex-programming-basics", label: "Unit 3: Apex Programming Basics" },
+  { href: "/course/apex-programming-development", label: "Unit 4: Apex Programming Development" },
+  { href: "/course/visualforce-development", label: "Unit 5: Visualforce Development" },
   { href: "/verify-certificate", label: "Verify a certificate" },
 ];
 
